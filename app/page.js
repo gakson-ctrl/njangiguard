@@ -444,25 +444,25 @@ export default function Page() {
   return (
     <div style={{ backgroundColor: '#BEBEBE', minHeight: '100vh' }}>
 
-      {/* Phone-width container */}
-      <div className="max-w-sm mx-auto flex flex-col relative" style={{ minHeight: '100vh', backgroundColor: '#F5F5F5' }}>
+      {/* Phone-width container — bounded height so nav is always visible */}
+      <div className="max-w-sm mx-auto flex flex-col relative" style={{ height: '100vh', minHeight: '600px', backgroundColor: '#F5F5F5' }}>
 
-        {/* Global nav */}
-        <nav className="flex-shrink-0 flex items-center justify-between px-5 py-3 sticky top-0 z-[100]"
-          style={{ backgroundColor: '#1B7A43' }}>
+        {/* Global nav — first flex child, always at top, no sticky needed */}
+        <nav className="flex-shrink-0 flex items-center justify-between px-5 z-[100]"
+          style={{ backgroundColor: '#1B7A43', height: '48px' }}>
           <span className="text-white font-extrabold text-base">NjangiGuard 🛡</span>
           <span className="text-white text-xs font-semibold" style={{ opacity: 0.75 }}>ONE CEILING</span>
         </nav>
 
-        {/* Screen content with fade transition */}
-        <div key={screen} className="screen-fade flex-1 pb-20">
+        {/* Screen content — scrolls internally below nav */}
+        <div key={screen} className="screen-fade flex-1 overflow-y-auto pb-20">
           {showHome      && <HomeScreen />}
           {screen === 'cooldown' && <CooldownScreen />}
           {screen === 'freeze'   && <FreezeScreen />}
           {screen === 'sms'      && <SmsScreen />}
         </div>
 
-        {/* Alert modal — absolute within phone container, above nav */}
+        {/* Alert modal — absolute inset-0 covers nav + content */}
         {screen === 'alert' && (
           <div className="absolute inset-0 z-[200]">
             <AlertModal setScreen={setScreen} />
