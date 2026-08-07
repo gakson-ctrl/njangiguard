@@ -6,8 +6,8 @@ import { scanSms } from '../lib/smsScanner';
 
 const alertResult = analyzeTransaction(mockSuspiciousTxn, mockUser);
 const scannedSms  = mockSmsQueue.map((msg) => ({ ...msg, result: scanSms(msg.text) }));
-
-const DEMO_CYCLE = ['home', 'alert', 'freeze', 'cooldown', 'sms'];
+const DEMO_CYCLE  = ['home', 'alert', 'freeze', 'cooldown', 'sms'];
+const SCREEN_LABELS = { home: 'Accueil', alert: 'Alerte', freeze: 'Gel', cooldown: 'Délai', sms: 'SMS' };
 
 function fmt(n) { return n.toLocaleString('fr-FR'); }
 
@@ -23,15 +23,27 @@ function ShieldSvg({ size = 48, color = '#1B7A43' }) {
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 
-function HomeScreen() {
+function HomeScreen({ setScreen, alertActive }) {
+  const riskBg    = alertActive ? '#D32F2F' : '#1B7A43';
+  const riskAnim  = alertActive
+    ? { animation: 'riskPulse 0.8s ease-in-out infinite', backgroundColor: riskBg }
+    : { animation: 'riskPulse 2s ease-in-out infinite',   backgroundColor: riskBg };
+  const riskLabel = alertActive
+    ? `ÉLEVÉ — ${alertResult.score} / 100`
+    : `FAIBLE — ${mockUser.riskScore} / 100`;
+
   return (
     <div className="flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
 
-      {/* Greeting bar */}
+      {/* Avatar header */}
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between flex-shrink-0">
-        <div>
-          <p className="text-xs font-semibold" style={{ color: '#999' }}>Bonjour 👋</p>
-          <p className="text-base font-bold" style={{ color: '#1A1A1A' }}>{mockUser.name}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-white text-sm flex-shrink-0"
+            style={{ backgroundColor: '#1B7A43' }}>AB</div>
+          <div>
+            <p className="text-base font-bold leading-tight" style={{ color: '#1A1A1A' }}>{mockUser.name}</p>
+            <p className="text-xs mt-0.5" style={{ color: '#999' }}>+237 698 XX XX XX · Yaoundé, Centre</p>
+          </div>
         </div>
         <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
           <span className="text-xl">🔔</span>
@@ -79,12 +91,12 @@ function HomeScreen() {
           </div>
         </div>
 
-        {/* Risk badge */}
+        {/* Risk badge — pulsing */}
         <div className="flex">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-white"
-            style={{ backgroundColor: '#1B7A43' }}>
+            style={riskAnim}>
             <span>🛡</span>
-            <span>Score de Risque: FAIBLE — {mockUser.riskScore} / 100</span>
+            <span>Score de Risque: {riskLabel}</span>
           </div>
         </div>
 
@@ -98,13 +110,16 @@ function HomeScreen() {
             {mockTransactions.map((txn) => {
               const isIncoming = txn.type === 'reçu';
               return (
-                <div key={txn.id} className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3">
+                <div key={txn.id} className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3"
+                  style={{ borderLeft: `4px solid ${isIncoming ? '#1B7A43' : '#D32F2F'}` }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                     style={{ backgroundColor: isIncoming ? '#E8F5EE' : '#FFF3E0' }}>
                     {isIncoming ? '📲' : '💸'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate" style={{ color: '#1A1A1A' }}>{isIncoming ? txn.from : txn.to}</p>
+                    <p className="font-semibold text-sm truncate" style={{ color: '#1A1A1A' }}>
+                      {isIncoming ? txn.from : txn.to}
+                    </p>
                     <p className="text-xs mt-0.5" style={{ color: '#999' }}>{txn.time}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -122,6 +137,14 @@ function HomeScreen() {
           </div>
         </div>
 
+        {/* Simulate suspicious transaction */}
+        <button
+          onClick={() => setScreen('alert')}
+          className="w-full py-3 rounded-2xl text-sm font-bold transition-colors hover:bg-green-50"
+          style={{ border: '2px solid #1B7A43', color: '#1B7A43', backgroundColor: 'transparent' }}>
+          🔍 Simuler une transaction suspecte
+        </button>
+
       </div>
     </div>
   );
@@ -133,9 +156,8 @@ function AlertModal({ setScreen }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center px-4 py-6 overflow-y-auto"
       style={{ backgroundColor: 'rgba(211,47,47,0.10)', backdropFilter: 'blur(3px)' }}>
-      <div className="bg-white rounded-3xl p-6 w-full shadow-2xl" style={{ border: '1px solid #FFCDD2' }}>
+      <div className="alert-slide-up bg-white rounded-3xl p-6 w-full shadow-2xl" style={{ border: '1px solid #FFCDD2' }}>
 
-        {/* Green SVG shield, pulsing */}
         <div className="flex justify-center mb-4">
           <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse"
             style={{ backgroundColor: '#E8F5EE' }}>
@@ -171,11 +193,13 @@ function AlertModal({ setScreen }) {
 
         <div className="flex gap-3 mb-3">
           <button className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-            style={{ backgroundColor: '#1B7A43' }} onClick={() => setScreen('home')}>
+            style={{ backgroundColor: '#1B7A43' }}
+            onClick={() => setScreen('home')}>
             ✅ C&apos;est moi, continuer
           </button>
           <button className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-            style={{ backgroundColor: '#D32F2F' }} onClick={() => setScreen('freeze')}>
+            style={{ backgroundColor: '#D32F2F' }}
+            onClick={() => setScreen('freeze')}>
             🚫 Annuler &amp; Geler
           </button>
         </div>
@@ -190,8 +214,9 @@ function AlertModal({ setScreen }) {
 
 // ─── Cooldown Screen ──────────────────────────────────────────────────────────
 
-function CooldownScreen() {
+function CooldownScreen({ setScreen }) {
   const [seconds, setSeconds] = useState(600);
+  const [warning, setWarning] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
@@ -201,6 +226,11 @@ function CooldownScreen() {
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
   const isExpired = seconds === 0;
+
+  const handleConfirm = () => {
+    setWarning(true);
+    setTimeout(() => { setWarning(false); setScreen('home'); }, 1500);
+  };
 
   return (
     <div className="flex flex-col" style={{ backgroundColor: '#FFFDF5' }}>
@@ -249,11 +279,28 @@ function CooldownScreen() {
         </div>
 
         <div className="flex gap-3">
-          <button className="flex-1 py-3 rounded-xl text-sm font-bold"
-            style={{ backgroundColor: '#F0F0F0', color: '#555' }}>Annuler</button>
-          <button className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-            style={{ backgroundColor: '#F57C00' }}>Confirmer quand même (risque)</button>
+          <button
+            onClick={() => setScreen('home')}
+            className="flex-1 py-3 rounded-xl text-sm font-bold"
+            style={{ backgroundColor: '#F0F0F0', color: '#555' }}>
+            Annuler
+          </button>
+          <button
+            onClick={handleConfirm}
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
+            style={{ backgroundColor: '#F57C00' }}>
+            Confirmer quand même (risque)
+          </button>
         </div>
+
+        {warning && (
+          <div className="rounded-xl px-4 py-3 text-center"
+            style={{ backgroundColor: '#FFEBEE', border: '1px solid #FFCDD2' }}>
+            <p className="text-sm font-bold" style={{ color: '#D32F2F' }}>
+              Vous assumez ce risque — transaction en cours...
+            </p>
+          </div>
+        )}
 
         <p className="text-center text-sm font-semibold" style={{ color: '#F57C00' }}>
           Ajouter à mes contacts de confiance →
@@ -265,33 +312,65 @@ function CooldownScreen() {
 
 // ─── Freeze Screen ────────────────────────────────────────────────────────────
 
-function FreezeScreen() {
-  const [frozen, setFrozen] = useState(false);
+function FreezeScreen({ setScreen }) {
+  const [frozen,    setFrozen]    = useState(false);
   const [freezeTime, setFreezeTime] = useState('');
+  const [flash,     setFlash]     = useState(false);
+  const [pinMode,   setPinMode]   = useState(false);
+  const [pin,       setPin]       = useState('');
+  const [defrosted, setDefrosted] = useState(false);
 
   const handleFreeze = () => {
-    const now = new Date();
-    const day = now.getDate();
-    const month = now.toLocaleDateString('fr-FR', { month: 'long' });
-    const year = now.getFullYear();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-    const sec = String(now.getSeconds()).padStart(2, '0');
-    setFreezeTime(`${day} ${month} ${year} — ${hh}:${mm}:${sec}`);
-    setFrozen(true);
+    setFlash(true);
+    setTimeout(() => {
+      setFlash(false);
+      const now = new Date();
+      const day   = now.getDate();
+      const month = now.toLocaleDateString('fr-FR', { month: 'long' });
+      const year  = now.getFullYear();
+      const hh    = String(now.getHours()).padStart(2, '0');
+      const mm    = String(now.getMinutes()).padStart(2, '0');
+      const sec   = String(now.getSeconds()).padStart(2, '0');
+      setFreezeTime(`${day} ${month} ${year} — ${hh}:${mm}:${sec}`);
+      setFrozen(true);
+    }, 200);
   };
 
+  const handlePinDigit = (digit) => {
+    setPin((prev) => prev.length >= 4 ? prev : prev + digit);
+  };
+
+  useEffect(() => {
+    if (pin.length === 4) {
+      const t1 = setTimeout(() => setDefrosted(true), 100);
+      const t2 = setTimeout(() => setScreen('home'), 2100);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [pin, setScreen]);
+
+  const handlePinDelete = () => setPin((p) => p.slice(0, -1));
+
+  const PIN_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, '⌫'];
+
   return (
-    <div className="flex flex-col items-center justify-center gap-6 px-6 py-10"
+    <div className="relative flex flex-col items-center justify-center gap-6 px-6 py-10"
       style={{ backgroundColor: '#1A1A1A', minHeight: '80vh' }}>
+
+      {/* Red flash overlay */}
+      {flash && (
+        <div className="absolute inset-0 z-50 pointer-events-none rounded-none"
+          style={{ backgroundColor: '#D32F2F', opacity: 0.3 }} />
+      )}
 
       <div className="w-28 h-28 rounded-full flex items-center justify-center text-5xl flex-shrink-0"
         style={{
           backgroundColor: frozen ? '#1B5E20' : '#D32F2F',
-          boxShadow: frozen ? '0 0 48px rgba(27,94,32,0.55)' : '0 0 48px rgba(211,47,47,0.55)',
+          boxShadow: frozen
+            ? '0 0 48px rgba(27,94,32,0.55)'
+            : '0 0 48px rgba(211,47,47,0.55)',
         }}>🛡</div>
 
-      {!frozen ? (
+      {!frozen && (
         <>
           <div className="text-center">
             <p className="text-white font-extrabold text-xl mb-2">Geler mon compte</p>
@@ -299,7 +378,8 @@ function FreezeScreen() {
               En cas de vol ou de contrainte, gelez votre compte immédiatement
             </p>
           </div>
-          <button onClick={handleFreeze}
+          <button
+            onClick={handleFreeze}
             className="w-full max-w-xs py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-transform active:scale-95"
             style={{ backgroundColor: '#D32F2F', boxShadow: '0 6px 24px rgba(211,47,47,0.5)' }}>
             🔴 GELER MON COMPTE
@@ -311,7 +391,9 @@ function FreezeScreen() {
             </p>
           </div>
         </>
-      ) : (
+      )}
+
+      {frozen && !pinMode && !defrosted && (
         <>
           <div className="text-center">
             <p className="text-5xl mb-3">✅</p>
@@ -323,17 +405,63 @@ function FreezeScreen() {
             <p className="text-sm font-semibold text-white">Toutes les transactions ont été suspendues</p>
           </div>
           <div className="flex flex-col gap-3 w-full max-w-xs">
-            <button className="py-3 rounded-xl font-bold text-sm"
+            <button
+              className="py-3 rounded-xl font-bold text-sm"
               style={{ border: '2px solid #1B7A43', color: '#4CAF50', backgroundColor: 'transparent' }}>
               Contacter Support
             </button>
-            <button onClick={() => alert('Saisissez votre PIN')}
+            <button
+              onClick={() => setPinMode(true)}
               className="py-3 rounded-xl font-bold text-sm"
-              style={{ backgroundColor: '#2A2A2A', color: '#666', border: '1px solid #333' }}>
-              Dégeler mon compte
+              style={{ backgroundColor: '#2A2A2A', color: '#CCC', border: '1px solid #444' }}>
+              🔓 Dégeler mon compte
             </button>
           </div>
         </>
+      )}
+
+      {frozen && pinMode && !defrosted && (
+        <div className="w-full max-w-xs flex flex-col items-center gap-4">
+          <p className="text-white font-bold text-base text-center">Entrez votre PIN (4 chiffres)</p>
+
+          {/* 4 digit boxes */}
+          <div className="flex gap-3 justify-center">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i}
+                className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-black text-white"
+                style={{
+                  border: `2px solid ${pin.length > i ? '#1B7A43' : '#444'}`,
+                  backgroundColor: '#2A2A2A',
+                }}>
+                {pin.length > i ? '●' : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* Numpad */}
+          <div className="grid grid-cols-3 gap-2 w-full mt-1">
+            {PIN_KEYS.map((k, i) => {
+              if (k === null) return <div key={i} />;
+              return (
+                <button
+                  key={i}
+                  onClick={() => k === '⌫' ? handlePinDelete() : handlePinDigit(String(k))}
+                  className="h-14 rounded-xl font-bold text-xl text-white transition-transform active:scale-95"
+                  style={{ backgroundColor: '#2A2A2A', border: '1px solid #3A3A3A' }}>
+                  {k}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {defrosted && (
+        <div className="text-center">
+          <p className="text-6xl mb-3">✅</p>
+          <p className="text-white font-extrabold text-xl mb-2">Compte dégelé ✅</p>
+          <p className="text-sm font-semibold" style={{ color: '#888' }}>Redirection en cours...</p>
+        </div>
       )}
     </div>
   );
@@ -342,7 +470,16 @@ function FreezeScreen() {
 // ─── SMS Screen ───────────────────────────────────────────────────────────────
 
 function SmsScreen() {
-  const [filter, setFilter] = useState('tous');
+  const [filter,  setFilter]  = useState('tous');
+  const [toast,   setToast]   = useState(null);
+  const [blocked, setBlocked] = useState(new Set());
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const blockMsg = (id) => setBlocked((b) => new Set([...b, id]));
 
   const visible = filter === 'suspects'
     ? scannedSms.filter((m) => m.result.score >= 40)
@@ -352,6 +489,15 @@ function SmsScreen() {
 
   return (
     <div className="flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
+
+      {/* Toast notification — sticky at top */}
+      {toast && (
+        <div className="sticky top-0 z-50 mx-4 mt-3 rounded-2xl px-4 py-3 shadow-lg"
+          style={{ backgroundColor: '#1B7A43' }}>
+          <p className="text-white font-bold text-sm text-center">{toast}</p>
+        </div>
+      )}
+
       <div className="bg-white border-b border-gray-100 px-5 pt-5 pb-4 flex-shrink-0">
         <h1 className="text-xl font-extrabold" style={{ color: '#1A1A1A' }}>📩 Détection SMS Frauduleux</h1>
         <p className="text-xs font-semibold mt-0.5" style={{ color: '#888' }}>NjangiGuard analyse vos messages en temps réel</p>
@@ -384,42 +530,75 @@ function SmsScreen() {
           const accent    = isArnaque ? '#D32F2F' : isSuspect ? '#F57C00' : '#1B7A43';
           const accentBg  = isArnaque ? '#FFEBEE' : isSuspect ? '#FFF3E0' : '#E8F5EE';
           const icon      = isArnaque ? '🚨' : isSuspect ? '⚠️' : '✅';
+          const isBlocked = blocked.has(msg.id);
+
           return (
-            <div key={msg.id} className="bg-white rounded-2xl p-4" style={{ border: `1px solid ${accentBg}` }}>
+            <div key={msg.id} className="bg-white rounded-2xl p-4 relative overflow-hidden"
+              style={{ border: `1px solid ${accentBg}` }}>
+
+              {/* Blocked overlay */}
+              {isBlocked && (
+                <div className="absolute inset-0 rounded-2xl z-10 flex items-center justify-center"
+                  style={{ backgroundColor: 'rgba(26,26,26,0.72)' }}>
+                  <p className="text-white font-bold text-sm">🚫 Expéditeur bloqué</p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                     style={{ backgroundColor: accentBg }}>{icon}</div>
-                  <p className="font-bold text-sm" style={{ color: '#1A1A1A' }}>{msg.sender}</p>
+                  <p className={`font-bold text-sm ${isBlocked ? 'line-through' : ''}`}
+                    style={{ color: '#1A1A1A' }}>{msg.sender}</p>
                 </div>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: accentBg, color: accent }}>{result.score}/100</span>
               </div>
-              <p className="text-sm mb-3 line-clamp-2" style={{ color: '#555' }}>{msg.text}</p>
+
+              <p className={`text-sm mb-3 line-clamp-2 ${isBlocked ? 'line-through' : ''}`}
+                style={{ color: '#555' }}>{msg.text}</p>
+
               <div className="rounded-xl px-3 py-2 mb-3" style={{ backgroundColor: accentBg }}>
                 <p className="text-xs font-bold" style={{ color: accent }}>
                   NjangiGuard AI: {isSafe ? '✅' : '⚠️'} {result.level} (Score: {result.score}/100)
                 </p>
                 {result.flags.length > 0 && (
-                  <p className="text-xs mt-0.5" style={{ color: accent, opacity: 0.75 }}>Motifs: {result.flags.join(', ')}</p>
+                  <p className="text-xs mt-0.5" style={{ color: accent, opacity: 0.75 }}>
+                    Motifs: {result.flags.join(', ')}
+                  </p>
                 )}
               </div>
+
               {isArnaque && (
                 <div className="flex gap-2">
-                  <button className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ backgroundColor: '#D32F2F' }}>Signaler</button>
-                  <button className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ backgroundColor: '#1A1A1A' }}>Bloquer</button>
-                  <button className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: '#F0F0F0', color: '#555' }}>Ignorer</button>
+                  <button
+                    onClick={() => showToast('Arnaque signalée — merci de protéger la communauté 🛡')}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                    style={{ backgroundColor: '#D32F2F' }}>Signaler</button>
+                  <button
+                    onClick={() => blockMsg(msg.id)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                    style={{ backgroundColor: '#1A1A1A' }}>Bloquer</button>
+                  <button
+                    className="flex-1 py-2 rounded-xl text-xs font-bold"
+                    style={{ backgroundColor: '#F0F0F0', color: '#555' }}>Ignorer</button>
                 </div>
               )}
               {isSuspect && (
                 <div className="flex gap-2">
-                  <button className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ backgroundColor: '#F57C00' }}>Vérifier sur mtn.cm</button>
-                  <button className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: '#F0F0F0', color: '#555' }}>Ignorer</button>
+                  <button
+                    onClick={() => window.open('https://www.mtn.cm', '_blank')}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                    style={{ backgroundColor: '#F57C00' }}>Vérifier sur mtn.cm</button>
+                  <button
+                    className="flex-1 py-2 rounded-xl text-xs font-bold"
+                    style={{ backgroundColor: '#F0F0F0', color: '#555' }}>Ignorer</button>
                 </div>
               )}
               {isSafe && (
                 <div className="flex">
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#E8F5EE', color: '#1B7A43' }}>✅ Sûr</span>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full"
+                    style={{ backgroundColor: '#E8F5EE', color: '#1B7A43' }}>✅ Sûr</span>
                 </div>
               )}
             </div>
@@ -444,25 +623,26 @@ export default function Page() {
   return (
     <div style={{ backgroundColor: '#BEBEBE', minHeight: '100vh' }}>
 
-      {/* Phone-width container — bounded height so nav is always visible */}
-      <div className="max-w-sm mx-auto flex flex-col relative" style={{ height: '100vh', minHeight: '600px', backgroundColor: '#F5F5F5' }}>
+      {/* Phone-width container */}
+      <div className="max-w-sm mx-auto flex flex-col relative"
+        style={{ height: '100vh', minHeight: '600px', backgroundColor: '#F5F5F5' }}>
 
-        {/* Global nav — first flex child, always at top, no sticky needed */}
+        {/* Global nav */}
         <nav className="flex-shrink-0 flex items-center justify-between px-5 z-[100]"
           style={{ backgroundColor: '#1B7A43', height: '48px' }}>
           <span className="text-white font-extrabold text-base">NjangiGuard 🛡</span>
           <span className="text-white text-xs font-semibold" style={{ opacity: 0.75 }}>ONE CEILING</span>
         </nav>
 
-        {/* Screen content — scrolls internally below nav */}
+        {/* Screen content — scrolls internally */}
         <div key={screen} className="screen-fade flex-1 overflow-y-auto pb-20">
-          {showHome      && <HomeScreen />}
-          {screen === 'cooldown' && <CooldownScreen />}
-          {screen === 'freeze'   && <FreezeScreen />}
+          {showHome              && <HomeScreen setScreen={setScreen} alertActive={screen === 'alert'} />}
+          {screen === 'cooldown' && <CooldownScreen setScreen={setScreen} />}
+          {screen === 'freeze'   && <FreezeScreen setScreen={setScreen} />}
           {screen === 'sms'      && <SmsScreen />}
         </div>
 
-        {/* Alert modal — absolute inset-0 covers nav + content */}
+        {/* Alert modal — covers nav + content */}
         {screen === 'alert' && (
           <div className="absolute inset-0 z-[200]">
             <AlertModal setScreen={setScreen} />
@@ -471,19 +651,37 @@ export default function Page() {
 
       </div>
 
-      {/* Floating DEMO button — fixed viewport bottom-right */}
-      <button
-        onClick={handleDemo}
-        className="fixed bottom-6 right-6 z-[500] rounded-2xl text-white font-bold text-sm"
-        style={{
-          backgroundColor: '#1A237E',
-          padding: '14px 22px',
-          boxShadow: '0 4px 20px rgba(26,35,126,0.5)',
-          letterSpacing: '0.06em',
-        }}
-      >
-        ▶ DEMO
-      </button>
+      {/* DEMO button + screen legend */}
+      <div className="fixed bottom-6 right-6 z-[500] flex flex-col items-end gap-2">
+        <button
+          onClick={handleDemo}
+          className="rounded-2xl text-white font-bold text-sm"
+          style={{
+            backgroundColor: '#1A237E',
+            padding: '14px 22px',
+            boxShadow: '0 4px 20px rgba(26,35,126,0.5)',
+            letterSpacing: '0.06em',
+          }}>
+          ▶ DEMO
+        </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <p className="text-xs font-bold"
+            style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.6)', letterSpacing: '0.04em' }}>
+            {SCREEN_LABELS[screen]}
+          </p>
+          <div className="flex gap-1.5 items-center">
+            {DEMO_CYCLE.map((s) => (
+              <div key={s}
+                className="rounded-full transition-all duration-200"
+                style={{
+                  width:  s === screen ? 18 : 8,
+                  height: 8,
+                  backgroundColor: s === screen ? '#fff' : 'rgba(255,255,255,0.4)',
+                }} />
+            ))}
+          </div>
+        </div>
+      </div>
 
     </div>
   );

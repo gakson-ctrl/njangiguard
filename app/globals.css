@@ -4,9 +4,18 @@
 
 @keyframes screenFadeIn {
   from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.screen-fade {
-  animation: screenFadeIn 0.2s ease-out;
+@keyframes riskPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.05); }
 }
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.screen-fade   { animation: screenFadeIn 0.2s ease-out; }
+.alert-slide-up { animation: slideUp 0.3s ease-out; }
